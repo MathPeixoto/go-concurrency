@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -11,24 +12,41 @@ type data struct {
 
 func main() {
 
-	// TODO: set deadline for goroutine to return computational result.
+	// Set deadline for goroutine to return computational result.
+	deadline := time.Now().Add(100 * time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
 
 	compute := func() <-chan data {
 		ch := make(chan data)
 		go func() {
 			defer close(ch)
-			// Simulate work.
+			deadline, ok := ctx.Deadline()
+			if ok {
+				fmt.Printf("deadline: %s\n", deadline)
+
+				// Simulate work.
+				if deadline.Sub(time.Now().Add(50*time.Millisecond)) < 0 {
+					fmt.Println("deadline exceeded")
+					return
+				}
+			}
 			time.Sleep(50 * time.Millisecond)
 
-			// Report result.
-			ch <- data{"123"}
+			select {
+			case ch <- data{"123"}:
+			case <-ctx.Done():
+				fmt.Println("compute cancelled")
+			}
 		}()
 		return ch
 	}
 
 	// Wait for the work to finish. If it takes too long move on.
 	ch := compute()
-	d := <-ch
-	fmt.Printf("work complete: %s\n", d)
+	d, ok := <-ch
+	if ok {
+		fmt.Printf("work complete: %s\n", d)
+	}
 
 }

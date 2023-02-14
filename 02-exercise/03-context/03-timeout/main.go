@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 func main() {
@@ -16,6 +18,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ctx, cancel := context.WithTimeout(req.Context(), 500*time.Millisecond)
+	defer cancel()
+	req = req.WithContext(ctx)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Println("ERROR:", err)
@@ -23,8 +29,16 @@ func main() {
 	}
 
 	// Close the response body on the return.
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println("ERROR:", err)
+		}
+	}(resp.Body)
 
 	// Write the response to stdout.
-	io.Copy(os.Stdout, resp.Body)
+	_, err = io.Copy(os.Stdout, resp.Body)
+	if err != nil {
+		return
+	}
 }
