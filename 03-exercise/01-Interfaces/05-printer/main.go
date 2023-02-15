@@ -1,17 +1,18 @@
 package main
 
 import (
+	"io"
 	"os"
 )
 
 func main() {
-	printer(os.Stdout, "hello")
+	os.Stdout.Write([]byte("hello"))
+	os.Stdout.Close()
+
+	printer(os.Stdout)
 }
 
-func printer(f *os.File, str string) {
-	f.Write([]byte(str))
-	f.Close()
+func printer(w io.Writer) {
+	w.Write([]byte("hello"))
+	w.Close()
 }
-
-//	os.Stdout.Write([]byte("hello"))
-//	os.Stdout.Close()
